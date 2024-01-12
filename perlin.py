@@ -27,18 +27,19 @@ def perlin(out_shape, subdivs, seed=0):
     t = f(out_grid)
     n0 = n00*(1-t[:,:,0]) + n10*t[:,:,0]
     n1 = n01*(1-t[:,:,0]) + n11*t[:,:,0]
+
     return n0*(1-t[:,:,1]) + n1*t[:,:,1]
 
-    
  
+def perlin_fractal(p_sz=(128,128), subdivs=(8,8), octaves=4):
+    # EDIT : generating noise at multiple frequencies and adding them up
+    p = np.zeros(p_sz)
+    for i in range(octaves):
+        freq = 2**i
+        p = perlin(p.shape, (subdivs[0]*freq,subdivs[1]*freq)) / freq+p
+    return p*np.sqrt(2)
 
-# EDIT : generating noise at multiple frequencies and adding them up
-p = np.zeros((128,128))
-subdivs=(8,8)
-for i in range(4):
-    freq = 2**i
-    p = perlin(p.shape, (subdivs[0]*freq,subdivs[1]*freq)) / freq+p
-# p = my_perlin(p.shape,subdivs)
-
-plt.imshow(p, origin='upper')
-plt.show()
+if __name__ == "__main__":
+    p = perlin_fractal()
+    plt.imshow(p, origin='upper')
+    plt.show()

@@ -15,18 +15,20 @@ class Scene:
 	def load(self):
 		app = self.app
 		add = self.add_object
-		self.level = np.zeros((16,64,16),dtype='int8')
-		self.level[:,:2,:]=1
+		self.level = np.zeros((16,64,16),dtype=np.uint8)
+		self.LevelObj = Level(self.app)
+		add(self.LevelObj)
+		# self.level[:,:2,:]=1
 
 		# n, s = 30, 3
 		# for x in range(-n, n, s):
 		# 	for z in range(-n, n, s):
 		# 		add(Cube(app, pos=(x, -s, z)))
-		for x, matrix in enumerate(self.level):
-			for y, row in enumerate(matrix):
-				for z, element in enumerate(row):
-					if element!=0:
-						add(Cube(app, pos=(x,y,z)))
+		# for x, matrix in enumerate(self.level):
+		# 	for y, row in enumerate(matrix):
+		# 		for z, element in enumerate(row):
+		# 			if element!=0:
+		# 				add(Cube(app, pos=(x,y,z)))
 
 		add(Cat(app, pos=(0, -2, -10)))
 		add(SkyBox(app))
@@ -144,7 +146,55 @@ class Scene:
 
 		return intersected_coordinates
 
+from perlin import perlin_fractal
+
+class Chunk:
+
+	def __init__(self, coord, level):
+		self.coord=coord
+		self.chunk = self.gen_chunk()
+		self.objects=[]
+		self.gen_model(level.app)
 	
+	def gen_chunk(self):
+		h_map_unscaled = perlin_fractal() #(128,128) in range (-1,1)
+		h_map = (h_map_unscaled+1)*5+2
+
+		chunk = np.zeros((h_map.shape[0], 16, h_map.shape[1]),dtype=np.uint8)
+		for y in range(16):
+			chunk[:, y, :] = (h_map > y)
+		return chunk[:16,:,:16]
+	
+	def gen_model(self,app):
+		add = self.objects.append
+		for x, matrix in enumerate(self.chunk):
+			for y, row in enumerate(matrix):
+				for z, element in enumerate(row):
+					if element!=0:
+						add(Cube(app, pos=(x+self.coord[0],y,z+self.coord[1])))
+	def render(self):
+		for object in self.objects:
+			object.render()
+		
+	
+
+
+	
+class Level:
+
+	def __init__(self, app):
+		self.app=app
+		self.ctx = app.ctx
+		self.seed = 42
+		self.chunks = []
+		self.chunks.append(Chunk((0,0), self))
+	
+	def render(self):
+		for chunk in self.chunks:
+			chunk.render()
+
+			
+
 
 
 
@@ -162,3 +212,6 @@ class ShadowMap:
 		fbo = self.ctx.framebuffer(depth_attachments=depth_texture)
 		fbo.bind()
 
+if __name__ == '__main__':
+	my_level = Level()
+	print(my_level.chunks[0])
