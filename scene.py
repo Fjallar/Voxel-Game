@@ -2,6 +2,8 @@ from model import *
 import moderngl as mgl
 import glm
 import pygame as pg
+from typing import Tuple, Iterable
+from math import floor
 
 class Scene:
 	def __init__(self, app):
@@ -20,16 +22,6 @@ class Scene:
 		add(self.LevelObj)
 		# self.level[:,:2,:]=1
 
-		# n, s = 30, 3
-		# for x in range(-n, n, s):
-		# 	for z in range(-n, n, s):
-		# 		add(Cube(app, pos=(x, -s, z)))
-		# for x, matrix in enumerate(self.level):
-		# 	for y, row in enumerate(matrix):
-		# 		for z, element in enumerate(row):
-		# 			if element!=0:
-		# 				add(Cube(app, pos=(x,y,z)))
-
 		add(Cat(app, pos=(0, -2, -10)))
 		add(SkyBox(app))
 
@@ -38,7 +30,6 @@ class Scene:
 			obj.render()
 	
 	def on_lclick(self):
-
 		start_pos = self.app.camera.position
 		direction = self.app.camera.forward
 		length=4
@@ -46,57 +37,25 @@ class Scene:
 		self.remove_first_block(block_coord_list)
 	
 	def on_rclick(self):
-
 		start_pos = self.app.camera.position
 		direction = self.app.camera.forward
 		length=4
 		block_coord_list = self.raycast_get_block_coords(start_pos, direction, length)
 		self.add_first_block(block_coord_list)
 
-	def remove_block(self,block_coord):
-
-		for i, cube in enumerate(self.objects):
-			if isinstance(cube, Cube) and cube.pos == block_coord:
-				self.objects.pop(i)
-				break
-
-		self.set_block_id(block_coord[0],block_coord[1],block_coord[2], 0)
-	
-	def add_block(self,block_coord,block_id):
-		new_cube = Cube(self.app, pos=block_coord)
-		self.objects.append(new_cube)
-		self.set_block_id(block_coord[0],block_coord[1],block_coord[2], block_id)
-
-	def get_block_id(self, x: int, y: int, z: int):
-		min_x, min_y, min_z = (0,0,0)
-		max_x,max_y, max_z = (16,64,16); 
-		if min_x <= x < max_x and min_y <= y < max_y and min_z <= z < max_z:
-			return self.level[x,y,z]
-		else:
-			return -1
-	
-	def set_block_id(self, x: int, y: int, z: int, block_id):
-		min_x, min_y, min_z = (0,0,0)
-		max_x,max_y, max_z = (16,64,16); 
-		if min_x <= x < max_x and min_y <= y < max_y and min_z <= z < max_z and block_id>=0:
-			self.level[x,y,z]=block_id
-			return True
-		else:
-			return False
-
 	def remove_first_block(self, block_coord_list):
-		is_block = np.array([self.get_block_id(*c)>0 for c in block_coord_list])
+		is_block = np.array([self.LevelObj.get_block_id(coord)>0 for coord in block_coord_list])
 		block_idxs = np.where(is_block)[0]
 		if len(block_idxs)==0:
 			return False
 		else:
 			idx0 = block_idxs[0]
 			block_coord = block_coord_list[idx0]
-			self.remove_block(block_coord)
+			self.LevelObj.remove_block(block_coord)
 			return True
 	
 	def add_first_block(self, block_coord_list):
-		is_block = np.array([self.get_block_id(*c)>0 for c in block_coord_list])
+		is_block = np.array([self.LevelObj.get_block_id(coord)>0 for coord in block_coord_list])
 		block_idxs = np.where(is_block)[0]
 		if len(block_idxs)==0:
 			return False
@@ -105,18 +64,15 @@ class Scene:
 		else:
 			idx0 = block_idxs[0]-1
 			block_coord = block_coord_list[idx0]
-			is_added = self.add_block(block_coord,1)
+			is_added = self.LevelObj.add_block(block_coord,1)
 			return is_added
 
-
 	def raycast_get_block_coords(self, start_pos, direction, length):
-		
 		direction = np.array(direction)
 		direction /= np.linalg.norm(direction)
 		current_position = np.array(start_pos)
 		eps_vec = np.sign(direction)*1e-6
 		intersected_coordinates = []
-
 
 		while np.linalg.norm(start_pos-current_position)<length:
 			# -0.1 -> 0, which is wrong!, should be -1 --> FIXIT
@@ -137,10 +93,6 @@ class Scene:
 			if t_max[min_index] <0:
 				pg.event.set_grab(False)
 				pg.mouse.set_visible(True)
-				print(grid_coordinates)
-				print(current_position)
-				print(direction)
-				print(start_pos)
 
 			current_position += direction * t_max[min_index]+eps_vec
 
@@ -149,9 +101,9 @@ class Scene:
 from perlin import perlin_fractal
 
 class Chunk:
-
 	def __init__(self, coord, level):
 		self.coord=coord
+		self.size=(16,64,16)
 		self.chunk = self.gen_chunk()
 		self.objects=[]
 		self.gen_model(level.app)
@@ -165,39 +117,79 @@ class Chunk:
 			chunk[:, y, :] = (h_map > y)
 		return chunk[:16,:,:16]
 	
+	def __contains__(self, in_coords: Iterable[int])->bool:
+		assert len(in_coords)==3
+		return all([self_x<=in_x<self_x+chunk_x for in_x, self_x, chunk_x in zip(in_coords, self.coord, self.size)])
+
+	def convert_coord(self, coord: Tuple[int,int,int]):
+		return tuple([x-self_x for x, self_x in zip(coord, self.coord)])
+
+	def get_block_id(self, coord: Tuple[int, int, int])->int:
+		if coord not in self:
+			raise IndexError("Index out of bounds for this chunk. Current ")
+		chunk_coord=self.convert_coord(coord)
+		return self.chunk[*chunk_coord]
+
+	def remove_block(self, coord: Tuple[int,int,int]):
+		if coord not in self:
+			raise IndexError("Index out of bounds for this chunk. Current ")
+		chunk_coord=self.convert_coord(coord)
+		self.chunk[*chunk_coord]=0
+		for i, cube in enumerate(self.objects):
+			if isinstance(cube, Cube) and cube.pos == coord:
+				self.objects.pop(i)
+				break
+
+	def add_block(self, app, coord: Tuple[int, int, int], block_id: int):
+		if coord not in self:
+			raise IndexError("Index out of bounds for this chunk. Current ")
+		chunk_coord=self.convert_coord(coord)
+		self.chunk[*chunk_coord]=block_id
+		self.objects.append(Cube(app, pos=coord))
+
 	def gen_model(self,app):
 		add = self.objects.append
 		for x, matrix in enumerate(self.chunk):
 			for y, row in enumerate(matrix):
 				for z, element in enumerate(row):
 					if element!=0:
-						add(Cube(app, pos=(x+self.coord[0],y,z+self.coord[1])))
+						add(Cube(app, pos=(x+self.coord[0],y+self.coord[1],z+self.coord[2])))
 	def render(self):
 		for object in self.objects:
 			object.render()
 		
-	
-
-
-	
 class Level:
-
 	def __init__(self, app):
 		self.app=app
 		self.ctx = app.ctx
 		self.seed = 42
 		self.chunks = []
-		self.chunks.append(Chunk((0,0), self))
+		self.chunks.append(Chunk((0,0,0), self))
 	
 	def render(self):
 		for chunk in self.chunks:
 			chunk.render()
-
+	
+	def get_block_id(self, coord: Tuple[int, int, int])->int:
+		for chunk in self.chunks:
+			if coord in chunk:
+				return chunk.get_block_id(coord)
+		#should probably generate a new chunk and try once more.
+		return -1
+	
+	#should be done by getters and setters.
+	def remove_block(self,  coord: Tuple[int,int,int])->None:
+		for chunk in self.chunks:
+			if coord in chunk:
+				chunk.remove_block(coord)
+				return
+	
+	def add_block(self, coord: Tuple[int,int,int], block_id:int)->None:
+		for chunk in self.chunks:
+			if coord in chunk:
+				chunk.add_block(self.app, coord, block_id)
+				return
 			
-
-
-
-
 class ShadowMap:
 	def __init__(self, app,lights):
 		self.ctx = app.ctx
