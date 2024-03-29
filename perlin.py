@@ -1,19 +1,42 @@
 import numpy as np
 import matplotlib.pyplot as plt
+import rgen
+from ctypes import c_uint32
 
+seed=7937362
 
-def perlin(out_shape, subdivs, seed=0):
+'''
+inp: grid_xy = (2,d,d)
+outp: rand_grid = (d,d)
+'''
+def pseudo_random_grid(grid_xy,octave=0):
+        # Large prime numbers for hashing
+    prime1 = 2345209523
+    prime2 = 3244105439
+    prime3 = 2500958297
+    prime4 = 4183653959
+    
+    # Combine the seed and coordinates in a unique way
+    hash_value = (grid_xy[0,:,:] * prime1) ^ (grid_xy[1,:,:] * prime2) ^ (seed * prime3) ^ (octave * prime4)
+
+    return (hash_value&0x7FFFFFF) / np.uint32(0x7FFFFFF)
+
+#pos_xy is subdivided
+def perlin(out_shape, pos_xy, octave=0):
     def f(x):
         return x**3*(x*(x*6-15)+10)
+    # np.random.seed(seed)¨
+    rgrid = rgen.from_pos(pos_xy.astype("uint32"), octave+4)/2**32
+    rand_theta = 2*np.pi*(rgrid)  #pseudo_random_grid(pos_xy, octave=octave)
+    sd_x, sd_y = rand_theta.shape
     
-    np.random.seed(seed)
-
-    rand_theta = np.random.uniform(0.0,2*np.pi,(subdivs[0]+1)*(subdivs[1]+1)).reshape((subdivs[0]+1),(subdivs[1]+1))
     grad_grid = np.dstack([np.cos(rand_theta), np.sin(rand_theta)])
+    sd_x, sd_y = rand_theta.shape
+    sd_x-=1;sd_y-=1
 
-    delta = (subdivs[0]/out_shape[0], subdivs[1]/out_shape[1])
-    d0, d1 = (out_shape[0]//subdivs[0], out_shape[1]//subdivs[1])
-    out_grid = np.mgrid[0:subdivs[0]:delta[0], 0:subdivs[1]:delta[1]].transpose(1,2,0)%1
+    delta = (sd_x/out_shape[0], sd_y/out_shape[1])
+    d0, d1 = (out_shape[0]//sd_x, out_shape[1]//sd_y)
+    out_grid = np.mgrid[0:sd_x:delta[0], 0:sd_y:delta[1]].transpose(1,2,0)%1
     
     g00 = grad_grid[:-1,:-1].repeat(d0,0).repeat(d1,1)
     g01 = grad_grid[:-1,1:].repeat(d0,0).repeat(d1,1)
@@ -30,16 +53,24 @@ def perlin(out_shape, subdivs, seed=0):
 
     return n0*(1-t[:,:,1]) + n1*t[:,:,1]
 
- 
-def perlin_fractal(p_sz=(128,128), subdivs=(8,8), octaves=4):
+#Questions:
+#1. Will x=[0,128],y=[0,128] overlap with x= [16,112], y=[-64,64] @ x=[16,112] y=[0,64]?
+#2. can I do a 3D version of this?
+#3. How does opensimplex noise work?
+#4. 
+
+#max_stepsize
+def perlin_fractal(pos_xy, max_stepsize=(16,16), octaves=4):
     # EDIT : generating noise at multiple frequencies and adding them up
-    p = np.zeros(p_sz)
-    for i in range(octaves):
-        freq = 2**i
-        p = perlin(p.shape, (subdivs[0]*freq,subdivs[1]*freq)) / freq+p
+    p = np.zeros_like(pos_xy[0,:-1,:-1],dtype=np.float64)
+    for octave in range(octaves):
+        freq = 2**octave
+        step_x, step_y = (int(max_stepsize[0]>>octave), int(max_stepsize[1]>>octave))
+        p += perlin(p.shape, pos_xy[:,::step_x,::step_y], octave=octave)/freq
     return p*np.sqrt(2)
 
 if __name__ == "__main__":
-    p = perlin_fractal()
+    pos_xy=np.stack(np.meshgrid(np.arange(129),np.arange(129)))
+    p = perlin_fractal(pos_xy)
     plt.imshow(p, origin='upper')
     plt.show()

@@ -1,2 +1,5 @@
 /textures/
 /objects/
+/__pycache__/
+.vscode/
+random_test.py

@@ -102,17 +102,20 @@ from perlin import perlin_fractal
 
 class Chunk:
 	def __init__(self, coord, level):
-		self.coord=coord
+		self.coord=(coord[0]*16,0,coord[1]*16)
 		self.size=(16,64,16)
 		self.chunk = self.gen_chunk()
 		self.objects=[]
 		self.gen_model(level.app)
 	
 	def gen_chunk(self):
-		h_map_unscaled = perlin_fractal() #(128,128) in range (-1,1)
-		h_map = (h_map_unscaled+1)*5+2
+		pos_grid = np.mgrid[self.coord[0]:self.coord[0]+self.size[0]+1,self.coord[2]:self.coord[2]+self.size[2]+1]
+		h_map_unscaled =  perlin_fractal(pos_grid)
+		h_map = (h_map_unscaled+1)*10+2
 
-		chunk = np.zeros((h_map.shape[0], 16, h_map.shape[1]),dtype=np.uint8)
+		# chunk = np.zeros((h_map.shape[0], self.size[1], h_map.shape[1]),dtype=np.uint8)
+		
+		chunk = np.zeros(self.size,dtype=np.uint8)
 		for y in range(16):
 			chunk[:, y, :] = (h_map > y)
 		return chunk[:16,:,:16]
@@ -162,9 +165,11 @@ class Level:
 	def __init__(self, app):
 		self.app=app
 		self.ctx = app.ctx
-		self.seed = 42
+		self.seed = 43
 		self.chunks = []
-		self.chunks.append(Chunk((0,0,0), self))
+		for i in range(2):
+			for j in range(2):
+				self.chunks.append(Chunk((i,j), self))
 	
 	def render(self):
 		for chunk in self.chunks:
