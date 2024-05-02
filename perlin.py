@@ -5,29 +5,15 @@ from ctypes import c_uint32
 
 seed=7937362
 
-'''
-inp: grid_xy = (2,d,d)
-outp: rand_grid = (d,d)
-'''
-def pseudo_random_grid(grid_xy,octave=0):
-        # Large prime numbers for hashing
-    prime1 = 2345209523
-    prime2 = 3244105439
-    prime3 = 2500958297
-    prime4 = 4183653959
-    
-    # Combine the seed and coordinates in a unique way
-    hash_value = (grid_xy[0,:,:] * prime1) ^ (grid_xy[1,:,:] * prime2) ^ (seed * prime3) ^ (octave * prime4)
 
-    return (hash_value&0x7FFFFFF) / np.uint32(0x7FFFFFF)
 
 #pos_xy is subdivided
 def perlin(out_shape, pos_xy, octave=0):
     def f(x):
         return x**3*(x*(x*6-15)+10)
     # np.random.seed(seed)¨
-    rgrid = rgen.from_pos(pos_xy.astype("uint32"), octave+4)/2**32
-    rand_theta = 2*np.pi*(rgrid)  #pseudo_random_grid(pos_xy, octave=octave)
+    rgrid = rgen.from_pos(pos_xy.astype("uint32"), octave)/2**32
+    rand_theta = 2*np.pi*(rgrid)  
     sd_x, sd_y = rand_theta.shape
     
     grad_grid = np.dstack([np.cos(rand_theta), np.sin(rand_theta)])
