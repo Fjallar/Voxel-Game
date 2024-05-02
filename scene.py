@@ -72,7 +72,7 @@ class Scene:
 		direction = np.array(direction)
 		direction /= np.linalg.norm(direction)
 		current_position = np.array(start_pos)
-		eps_vec = np.sign(direction)*1e-6
+		eps_vec = np.sign(direction)*np.finfo(np.float32).eps*2
 		intersected_coordinates = []
 
 		while np.linalg.norm(start_pos-current_position)<length:
@@ -95,108 +95,10 @@ class Scene:
 				pg.event.set_grab(False)
 				pg.mouse.set_visible(True)
 
-			current_position += direction * t_max[min_index]+eps_vec
+			current_position += direction * t_max[min_index]+(eps_vec*np.abs(current_position))
 
 		return intersected_coordinates
 
-# from perlin import perlin_fractal
-
-# class Chunk:
-# 	def __init__(self, coord, level):
-# 		self.coord=(coord[0]*16,0,coord[1]*16)
-# 		self.size=(16,64,16)
-# 		self.chunk = self.gen_chunk()
-# 		self.objects=[]
-# 		self.gen_model(level.app)
-	
-# 	def gen_chunk(self):
-# 		pos_grid = np.mgrid[self.coord[0]:self.coord[0]+self.size[0]+1,self.coord[2]:self.coord[2]+self.size[2]+1]
-# 		h_map_unscaled =  perlin_fractal(pos_grid)
-# 		h_map = (h_map_unscaled+1)*10+2
-
-# 		# chunk = np.zeros((h_map.shape[0], self.size[1], h_map.shape[1]),dtype=np.uint8)
-		
-# 		chunk = np.zeros(self.size,dtype=np.uint8)
-# 		for y in range(16):
-# 			chunk[:, y, :] = (h_map > y)
-# 		return chunk[:16,:,:16]
-	
-# 	def __contains__(self, in_coords: Iterable[int])->bool:
-# 		assert len(in_coords)==3
-# 		return all([self_x<=in_x<self_x+chunk_x for in_x, self_x, chunk_x in zip(in_coords, self.coord, self.size)])
-
-# 	def convert_coord(self, coord: Tuple[int,int,int]):
-# 		return tuple([x-self_x for x, self_x in zip(coord, self.coord)])
-
-# 	def get_block_id(self, coord: Tuple[int, int, int])->int:
-# 		if coord not in self:
-# 			raise IndexError("Index out of bounds for this chunk. Current ")
-# 		chunk_coord=self.convert_coord(coord)
-# 		return self.chunk[*chunk_coord]
-
-# 	def remove_block(self, coord: Tuple[int,int,int]):
-# 		if coord not in self:
-# 			raise IndexError("Index out of bounds for this chunk. Current ")
-# 		chunk_coord=self.convert_coord(coord)
-# 		self.chunk[*chunk_coord]=0
-# 		for i, cube in enumerate(self.objects):
-# 			if isinstance(cube, Cube) and cube.pos == coord:
-# 				self.objects.pop(i)
-# 				break
-
-# 	def add_block(self, app, coord: Tuple[int, int, int], block_id: int):
-# 		if coord not in self:
-# 			raise IndexError("Index out of bounds for this chunk. Current ")
-# 		chunk_coord=self.convert_coord(coord)
-# 		self.chunk[*chunk_coord]=block_id
-# 		self.objects.append(Cube(app, pos=coord))
-
-	# def gen_model(self,app):
-	# 	add = self.objects.append
-	# 	for x, matrix in enumerate(self.chunk):
-	# 		for y, row in enumerate(matrix):
-	# 			for z, element in enumerate(row):
-	# 				if element!=0:
-	# 					add(Cube(app, pos=(x+self.coord[0],y+self.coord[1],z+self.coord[2])))
-# 	def render(self):
-# 		for object in self.objects:
-# 			object.render()
-		
-# class Level:
-# 	chunk_size=(16,16)
-
-# 	def __init__(self, app):
-# 		self.app=app
-# 		self.ctx = app.ctx
-# 		self.seed = 43
-# 		self.chunks = []
-# 		for i in range(2):
-# 			for j in range(2):
-# 				self.chunks.append(Chunk((i,j), self))
-	
-# 	def render(self):
-# 		for chunk in self.chunks:
-# 			chunk.render()
-	
-# 	def get_block_id(self, coord: Tuple[int, int, int])->int:
-# 		for chunk in self.chunks:
-# 			if coord in chunk:
-# 				return chunk.get_block_id(coord)
-# 		#should probably generate a new chunk and try once more.
-# 		return -1
-	
-# 	#should be done by getters and setters.
-# 	def remove_block(self,  coord: Tuple[int,int,int])->None:
-# 		for chunk in self.chunks:
-# 			if coord in chunk:
-# 				chunk.remove_block(coord)
-# 				return
-	
-# 	def add_block(self, coord: Tuple[int,int,int], block_id:int)->None:
-# 		for chunk in self.chunks:
-# 			if coord in chunk:
-# 				chunk.add_block(self.app, coord, block_id)
-# 				return
 			
 class ShadowMap:
 	def __init__(self, app,lights):

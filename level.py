@@ -129,7 +129,7 @@ def generate_vertex_array(start_pos, level_array):
 
 class Level:
 	chunk_size: Tuple[int,int,int] = (16,64,16)
-	nr_chunks: Tuple[int,int] = (5,5)
+	nr_chunks: Tuple[int,int] = (9,9)
 	size: Tuple[int,int,int] = (nr_chunks[0]*chunk_size[0], chunk_size[1], nr_chunks[1]*chunk_size[2]) 
 
 
@@ -197,22 +197,10 @@ class Level:
 
 		new_chunk_idx = self.get_camera_chunk_index()
 		if self.chunk_index!=new_chunk_idx:
-			print("New Chunk: {}".format(new_chunk_idx))
 			self.chunk_index=new_chunk_idx
 			self.coord=(self.chunk_index[0]*self.chunk_size[0],0,self.chunk_index[1]*self.chunk_size[2])
 			self.level_array=self.gen_from_perlin(self.chunk_from(), self.chunk_to(),in_array=self.level_array)
 			self.update_model()
-			
-			# self.coord=(self.chunk_index[0]*self.chunk_size[0],0,self.chunk_index[1]*self.chunk_size[2])
-		# 	# perferred algoritm for optimal memory usage: (need to implement get_from_tos, plus check carefully that things work)
-		# 	# from_to_idxs = self.get_from_tos(new_chunk_idx)
-		# 	# for from_idx, to_idx in from_to_idxs:
-		# 	# 	start_x = from_idx[0]*self.chunk_size[0]; end_x=to_idx[0]*self.chunk_size[0]
-		# 	# 	start_y = from_idx[1]*self.chunk_size[2]; end_y=to_idx[1]*self.chunk_size[2]
-		# 	# 	self.gen_from_perlin(from_idx, to_idx, self.level_array[start_x:end_x,:,start_y:end_y])
-			
-			
-		# 	self.level_array=self.gen_from_perlin(self.chunk_from(), self.chunk_to())
 
 	def generate_geometry():
 		kernel = np.array([
